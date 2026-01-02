@@ -469,6 +469,17 @@ func GetPausesForEntry(entryID string) ([]model.Pause, error) {
 	return pauses, rows.Err()
 }
 
+func DeletePause(id string) error {
+	_, err := DB.Exec("DELETE FROM pauses WHERE id = ?", id)
+	return err
+}
+
+func UpdatePause(id string, pauseTime time.Time, resumeTime *time.Time) error {
+	_, err := DB.Exec("UPDATE pauses SET pause_time = ?, resume_time = ? WHERE id = ?",
+		pauseTime, resumeTime, id)
+	return err
+}
+
 // Config operations
 
 func GetConfig(key string) (string, error) {

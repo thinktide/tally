@@ -158,6 +158,74 @@ func runEdit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to update entry: %w", err)
 	}
 
+	// Handle pauses
+	if len(entry.Pauses) > 0 {
+		fmt.Printf("\nPauses (%d):\n", len(entry.Pauses))
+		for i, p := range entry.Pauses {
+			resumeStr := "(ongoing)"
+			if p.ResumeTime != nil {
+				resumeStr = p.ResumeTime.Format("2006-01-02 15:04:05")
+			}
+			fmt.Printf("  %d. %s - %s [%s]\n", i+1,
+				p.PauseTime.Format("2006-01-02 15:04:05"),
+				resumeStr,
+				formatDuration(p.Duration()))
+		}
+		fmt.Println()
+
+		for i, p := range entry.Pauses {
+			fmt.Printf("Pause %d - Edit (e), Delete (d), or Enter to skip: ", i+1)
+			action, _ := reader.ReadString('\n')
+			action = strings.TrimSpace(strings.ToLower(action))
+
+			switch action {
+			case "d", "delete":
+				if err := db.DeletePause(p.ID); err != nil {
+					return fmt.Errorf("failed to delete pause: %w", err)
+				}
+				fmt.Println("  Pause deleted")
+
+			case "e", "edit":
+				// Edit pause start
+				fmt.Printf("  Pause start [%s]: ", p.PauseTime.Format("2006-01-02 15:04:05"))
+				pauseStartInput, _ := reader.ReadString('\n')
+				pauseStartInput = strings.TrimSpace(pauseStartInput)
+
+				pauseStart := p.PauseTime
+				if pauseStartInput != "" {
+					t, err := parseTime(pauseStartInput)
+					if err != nil {
+						return fmt.Errorf("invalid pause start time: %w", err)
+					}
+					pauseStart = t
+				}
+
+				// Edit pause end
+				var pauseEnd *time.Time = p.ResumeTime
+				if p.ResumeTime != nil {
+					fmt.Printf("  Pause end [%s]: ", p.ResumeTime.Format("2006-01-02 15:04:05"))
+				} else {
+					fmt.Print("  Pause end [(ongoing)]: ")
+				}
+				pauseEndInput, _ := reader.ReadString('\n')
+				pauseEndInput = strings.TrimSpace(pauseEndInput)
+
+				if pauseEndInput != "" {
+					t, err := parseTime(pauseEndInput)
+					if err != nil {
+						return fmt.Errorf("invalid pause end time: %w", err)
+					}
+					pauseEnd = &t
+				}
+
+				if err := db.UpdatePause(p.ID, pauseStart, pauseEnd); err != nil {
+					return fmt.Errorf("failed to update pause: %w", err)
+				}
+				fmt.Println("  Pause updated")
+			}
+		}
+	}
+
 	fmt.Println("\nEntry updated successfully")
 	return nil
 }
