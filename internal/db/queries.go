@@ -449,6 +449,11 @@ func ResumeEntry(id string) error {
 	return tx.Commit()
 }
 
+func ReopenEntry(id string) error {
+	_, err := DB.Exec("UPDATE entries SET end_time = NULL, status = ? WHERE id = ?", model.StatusRunning, id)
+	return err
+}
+
 // UpdateEntry updates an entry in the database with the given parameters.
 //
 // The function modifies the entry identified by id by updating its projectID, title, and optional startTime and endTime.
