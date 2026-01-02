@@ -30,7 +30,7 @@ func runPause(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	if err := db.PauseEntry(entry.ID); err != nil {
+	if err := db.PauseEntry(entry.ID, "Manual"); err != nil {
 		return fmt.Errorf("failed to pause entry: %w", err)
 	}
 

@@ -71,6 +71,7 @@ type Pause struct {
 	EntryID    string     `json:"entry_id"`
 	PauseTime  time.Time  `json:"pause_time"`
 	ResumeTime *time.Time `json:"resume_time,omitempty"`
+	Reason     string     `json:"reason"`
 }
 
 // Duration returns the duration of this pause

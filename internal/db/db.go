@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS pauses (
     entry_id TEXT NOT NULL,
     pause_time DATETIME NOT NULL,
     resume_time DATETIME,
+    reason TEXT DEFAULT 'Manual',
     FOREIGN KEY (entry_id) REFERENCES entries(id)
 );
 
@@ -87,6 +88,16 @@ func Init() error {
 	_, err = DB.Exec(schema)
 	if err != nil {
 		return err
+	}
+
+	// Migrations
+	migrations := []string{
+		// Add reason column to pauses table
+		`ALTER TABLE pauses ADD COLUMN reason TEXT DEFAULT 'Manual'`,
+	}
+
+	for _, m := range migrations {
+		DB.Exec(m) // Ignore errors (column may already exist)
 	}
 
 	// Initialize activity table with a single row

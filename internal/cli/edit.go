@@ -42,6 +42,7 @@ type editPause struct {
 	ID         string `json:"id"`
 	PauseTime  string `json:"pause_time"`
 	ResumeTime string `json:"resume_time,omitempty"`
+	Reason     string `json:"reason"`
 }
 
 func runEdit(cmd *cobra.Command, args []string) error {
@@ -89,6 +90,7 @@ func runEdit(cmd *cobra.Command, args []string) error {
 		ep := editPause{
 			ID:        p.ID,
 			PauseTime: p.PauseTime.Format("2006-01-02 15:04:05"),
+			Reason:    p.Reason,
 		}
 		if p.ResumeTime != nil {
 			ep.ResumeTime = p.ResumeTime.Format("2006-01-02 15:04:05")

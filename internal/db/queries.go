@@ -265,7 +265,7 @@ func DeleteEntry(id string) error {
 	return tx.Commit()
 }
 
-func PauseEntry(id string) error {
+func PauseEntry(id string, reason string) error {
 	tx, err := DB.Begin()
 	if err != nil {
 		return err
@@ -275,7 +275,7 @@ func PauseEntry(id string) error {
 	pauseID := model.NewULID()
 	now := time.Now()
 
-	_, err = tx.Exec("INSERT INTO pauses (id, entry_id, pause_time) VALUES (?, ?, ?)", pauseID, id, now)
+	_, err = tx.Exec("INSERT INTO pauses (id, entry_id, pause_time, reason) VALUES (?, ?, ?, ?)", pauseID, id, now, reason)
 	if err != nil {
 		return err
 	}
@@ -445,7 +445,7 @@ func repeatString(s string, n int) string {
 
 func GetPausesForEntry(entryID string) ([]model.Pause, error) {
 	rows, err := DB.Query(`
-		SELECT id, entry_id, pause_time, resume_time
+		SELECT id, entry_id, pause_time, resume_time, COALESCE(reason, 'Manual')
 		FROM pauses
 		WHERE entry_id = ?
 		ORDER BY pause_time`, entryID)
@@ -458,7 +458,7 @@ func GetPausesForEntry(entryID string) ([]model.Pause, error) {
 	for rows.Next() {
 		var p model.Pause
 		var resumeTime sql.NullTime
-		if err := rows.Scan(&p.ID, &p.EntryID, &p.PauseTime, &resumeTime); err != nil {
+		if err := rows.Scan(&p.ID, &p.EntryID, &p.PauseTime, &resumeTime, &p.Reason); err != nil {
 			return nil, err
 		}
 		if resumeTime.Valid {
