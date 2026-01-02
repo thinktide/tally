@@ -56,6 +56,7 @@ func init() {
 	rootCmd.AddCommand(resumeCmd)
 	rootCmd.AddCommand(logCmd)
 	rootCmd.AddCommand(editCmd)
+	rootCmd.AddCommand(deleteCmd)
 	rootCmd.AddCommand(reportCmd)
 	rootCmd.AddCommand(configCmd)
 }

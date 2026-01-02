@@ -237,6 +237,34 @@ func StopEntry(id string) error {
 	return err
 }
 
+func DeleteEntry(id string) error {
+	tx, err := DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Delete related pauses
+	_, err = tx.Exec("DELETE FROM pauses WHERE entry_id = ?", id)
+	if err != nil {
+		return err
+	}
+
+	// Delete related tags
+	_, err = tx.Exec("DELETE FROM entry_tags WHERE entry_id = ?", id)
+	if err != nil {
+		return err
+	}
+
+	// Delete entry
+	_, err = tx.Exec("DELETE FROM entries WHERE id = ?", id)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
 func PauseEntry(id string) error {
 	tx, err := DB.Begin()
 	if err != nil {
