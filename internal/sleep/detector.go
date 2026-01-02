@@ -115,40 +115,73 @@ func getSleepPeriodsSince(since time.Time) ([]SleepPeriod, error) {
 
 func parsePmsetLog(log string, since time.Time) ([]SleepPeriod, error) {
 	// Regex patterns for sleep and wake events
-	// Format: 2026-01-01 18:40:56 -0500 Sleep               	Entering Sleep state
-	// Format: 2026-01-01 18:44:41 -0500 Wake                	Wake from Deep Idle
-	sleepPattern := regexp.MustCompile(`^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) [+-]\d{4}\s+Sleep\s+Entering Sleep state`)
-	wakePattern := regexp.MustCompile(`^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) [+-]\d{4}\s+Wake\s+(Wake from|DarkWake to FullWake)`)
+	// System sleep: 2026-01-01 18:40:56 -0500 Sleep               	Entering Sleep state
+	// System wake:  2026-01-01 18:44:41 -0500 Wake                	Wake from Deep Idle
+	// Display off:  2026-01-01 08:22:58 -0500 Notification        	Display is turned off
+	// Display on:   2026-01-01 08:25:25 -0500 Notification        	Display is turned on
 
-	var sleepTimes []time.Time
-	var wakeTimes []time.Time
+	systemSleepPattern := regexp.MustCompile(`^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) [+-]\d{4}\s+Sleep\s+Entering Sleep state`)
+	systemWakePattern := regexp.MustCompile(`^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) [+-]\d{4}\s+Wake\s+(Wake from|DarkWake to FullWake)`)
+	displayOffPattern := regexp.MustCompile(`^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) [+-]\d{4}\s+Notification\s+Display is turned off`)
+	displayOnPattern := regexp.MustCompile(`^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) [+-]\d{4}\s+Notification\s+Display is turned on`)
+
+	type event struct {
+		time    time.Time
+		isStart bool // true = sleep/display off, false = wake/display on
+	}
+
+	var events []event
 
 	lines := strings.Split(log, "\n")
 	for _, line := range lines {
-		if match := sleepPattern.FindStringSubmatch(line); match != nil {
-			t, err := time.ParseInLocation("2006-01-02 15:04:05", match[1], time.Local)
-			if err == nil && t.After(since) {
-				sleepTimes = append(sleepTimes, t)
-			}
-		} else if match := wakePattern.FindStringSubmatch(line); match != nil {
-			t, err := time.ParseInLocation("2006-01-02 15:04:05", match[1], time.Local)
-			if err == nil && t.After(since) {
-				wakeTimes = append(wakeTimes, t)
-			}
+		var t time.Time
+		var isStart bool
+		var matched bool
+
+		if match := systemSleepPattern.FindStringSubmatch(line); match != nil {
+			t, _ = time.ParseInLocation("2006-01-02 15:04:05", match[1], time.Local)
+			isStart = true
+			matched = true
+		} else if match := systemWakePattern.FindStringSubmatch(line); match != nil {
+			t, _ = time.ParseInLocation("2006-01-02 15:04:05", match[1], time.Local)
+			isStart = false
+			matched = true
+		} else if match := displayOffPattern.FindStringSubmatch(line); match != nil {
+			t, _ = time.ParseInLocation("2006-01-02 15:04:05", match[1], time.Local)
+			isStart = true
+			matched = true
+		} else if match := displayOnPattern.FindStringSubmatch(line); match != nil {
+			t, _ = time.ParseInLocation("2006-01-02 15:04:05", match[1], time.Local)
+			isStart = false
+			matched = true
+		}
+
+		if matched && t.After(since) {
+			events = append(events, event{time: t, isStart: isStart})
 		}
 	}
 
-	// Match sleep/wake pairs
+	// Build sleep periods from events
+	// We need to pair off -> on events, handling overlapping system/display sleep
 	var periods []SleepPeriod
-	for _, sleepTime := range sleepTimes {
-		// Find the next wake time after this sleep
-		for _, wakeTime := range wakeTimes {
-			if wakeTime.After(sleepTime) {
-				periods = append(periods, SleepPeriod{
-					SleepTime: sleepTime,
-					WakeTime:  wakeTime,
-				})
-				break
+	var sleepStart *time.Time
+
+	for _, e := range events {
+		if e.isStart {
+			if sleepStart == nil {
+				sleepStart = &e.time
+			}
+		} else {
+			if sleepStart != nil {
+				// Only count if sleep was more than 1 minute (ignore brief display flickers)
+				duration := e.time.Sub(*sleepStart)
+				if duration >= time.Minute {
+					periods = append(periods, SleepPeriod{
+						SleepTime: *sleepStart,
+						WakeTime:  e.time,
+					})
+				}
+				sleepStart = nil
 			}
 		}
 	}
