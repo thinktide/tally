@@ -114,6 +114,7 @@ func printEntriesTable(entries []model.Entry) {
 	table.SetHeaderLine(false)
 	table.SetTablePadding("  ")
 	table.SetNoWhiteSpace(true)
+	table.SetAutoWrapText(false)
 
 	for _, e := range entries {
 		duration := e.Duration()
@@ -126,7 +127,7 @@ func printEntriesTable(entries []model.Entry) {
 
 		tags := make([]string, len(e.Tags))
 		for i, t := range e.Tags {
-			tags[i] = "+" + t.Name
+			tags[i] = t.Name
 		}
 
 		title := e.Title
@@ -139,7 +140,7 @@ func printEntriesTable(entries []model.Entry) {
 			"@" + e.Project.Name,
 			title,
 			durationStr,
-			strings.Join(tags, " "),
+			strings.Join(tags, ", "),
 			e.StartTime.Format("2006-01-02 15:04"),
 		})
 	}

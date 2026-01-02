@@ -187,7 +187,7 @@ func outputTable(summary *model.ReportSummary) error {
 	if len(summary.Entries) > 0 {
 		fmt.Println("Entries:")
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"Project", "Title", "Duration", "Date"})
+		table.SetHeader([]string{"ID", "Project", "Title", "Duration", "Tags", "Date"})
 		table.SetBorder(false)
 		table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 		table.SetAlignment(tablewriter.ALIGN_LEFT)
@@ -197,6 +197,7 @@ func outputTable(summary *model.ReportSummary) error {
 		table.SetHeaderLine(false)
 		table.SetTablePadding("  ")
 		table.SetNoWhiteSpace(true)
+		table.SetAutoWrapText(false)
 
 		for _, e := range summary.Entries {
 			title := e.Title
@@ -204,9 +205,11 @@ func outputTable(summary *model.ReportSummary) error {
 				title = title[:32] + "..."
 			}
 			table.Append([]string{
+				e.ID,
 				"@" + e.ProjectName,
 				title,
 				formatDurationShort(e.Duration),
+				strings.Join(e.TagNames, ", "),
 				e.StartTime.Format("2006-01-02 15:04"),
 			})
 		}
@@ -236,7 +239,7 @@ func outputCSV(summary *model.ReportSummary) error {
 		}
 
 		writer.Write([]string{
-			fmt.Sprintf("%d", e.ID),
+			e.ID,
 			e.ProjectName,
 			e.Title,
 			fmt.Sprintf("%.1f", e.Duration.Minutes()),
