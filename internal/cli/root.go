@@ -59,7 +59,6 @@ func init() {
 	rootCmd.AddCommand(deleteCmd)
 	rootCmd.AddCommand(reportCmd)
 	rootCmd.AddCommand(configCmd)
-	rootCmd.AddCommand(importCmd)
 }
 
 var versionCmd = &cobra.Command{
