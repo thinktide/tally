@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/jdecarlo/tally/internal/model"
+	"github.com/thinktide/tally/internal/model"
 )
 
 // Project operations

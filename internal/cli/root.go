@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jdecarlo/tally/internal/db"
-	"github.com/jdecarlo/tally/internal/sleep"
+	"github.com/thinktide/tally/internal/db"
+	"github.com/thinktide/tally/internal/sleep"
 	"github.com/spf13/cobra"
 )
 

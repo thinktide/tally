@@ -16,20 +16,20 @@ A fast, simple CLI time tracking utility.
 ### Homebrew
 
 ```bash
-brew tap jdecarlo/tally
+brew tap thinktide/tally
 brew install tally
 ```
 
 ### From source
 
 ```bash
-go install github.com/jdecarlo/tally/cmd/tally@latest
+go install github.com/thinktide/tally/cmd/tally@latest
 ```
 
 ### Build manually
 
 ```bash
-git clone https://github.com/jdecarlo/tally.git
+git clone https://github.com/thinktide/tally.git
 cd tally
 make build
 ./bin/tally

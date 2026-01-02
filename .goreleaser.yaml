@@ -20,7 +20,7 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/jdecarlo/tally/internal/cli.Version={{.Version}}
+      - -X github.com/thinktide/tally/internal/cli.Version={{.Version}}
     # CGO is needed for sqlite3, so we need to handle cross-compilation carefully
     overrides:
       - goos: darwin
@@ -64,7 +64,7 @@ changelog:
 
 release:
   github:
-    owner: jdecarlo
+    owner: thinktide
     name: tally
   draft: false
   prerelease: auto
@@ -72,9 +72,9 @@ release:
 brews:
   - name: tally
     repository:
-      owner: jdecarlo
+      owner: thinktide
       name: homebrew-tally
-    homepage: "https://github.com/jdecarlo/tally"
+    homepage: "https://github.com/thinktide/tally"
     description: "CLI time tracking utility"
     license: "MIT"
     install: |

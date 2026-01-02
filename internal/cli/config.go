@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jdecarlo/tally/internal/config"
+	"github.com/thinktide/tally/internal/config"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )

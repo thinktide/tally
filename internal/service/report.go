@@ -3,8 +3,8 @@ package service
 import (
 	"time"
 
-	"github.com/jdecarlo/tally/internal/db"
-	"github.com/jdecarlo/tally/internal/model"
+	"github.com/thinktide/tally/internal/db"
+	"github.com/thinktide/tally/internal/model"
 )
 
 type Period string

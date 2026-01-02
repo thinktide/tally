@@ -3,8 +3,8 @@ package cli
 import (
 	"fmt"
 
-	"github.com/jdecarlo/tally/internal/db"
-	"github.com/jdecarlo/tally/internal/model"
+	"github.com/thinktide/tally/internal/db"
+	"github.com/thinktide/tally/internal/model"
 	"github.com/spf13/cobra"
 )
 

@@ -1,4 +1,4 @@
-module github.com/jdecarlo/tally
+module github.com/thinktide/tally
 
 go 1.21
 

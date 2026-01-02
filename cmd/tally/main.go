@@ -1,6 +1,6 @@
 package main
 
-import "github.com/jdecarlo/tally/internal/cli"
+import "github.com/thinktide/tally/internal/cli"
 
 func main() {
 	cli.Execute()

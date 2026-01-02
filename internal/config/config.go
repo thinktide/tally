@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/jdecarlo/tally/internal/db"
+	"github.com/thinktide/tally/internal/db"
 )
 
 const (

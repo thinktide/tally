@@ -8,10 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jdecarlo/tally/internal/config"
-	"github.com/jdecarlo/tally/internal/db"
-	"github.com/jdecarlo/tally/internal/model"
-	"github.com/jdecarlo/tally/internal/service"
+	"github.com/thinktide/tally/internal/config"
+	"github.com/thinktide/tally/internal/db"
+	"github.com/thinktide/tally/internal/model"
+	"github.com/thinktide/tally/internal/service"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )

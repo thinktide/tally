@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jdecarlo/tally/internal/db"
+	"github.com/thinktide/tally/internal/db"
 	"github.com/spf13/cobra"
 )
 
