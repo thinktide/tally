@@ -61,6 +61,14 @@ CREATE TABLE IF NOT EXISTS activity (
 );
 `
 
+// GetDataDir returns the path to the application's data directory within the user's home directory.
+//
+// It determines the user's home directory using [os.UserHomeDir] and appends a folder named ".tally" to it.
+// If the home directory cannot be determined, it returns an empty string and an error.
+//
+// Returns:
+//   - A string representing the data directory path.
+//   - An error if the user's home directory cannot be determined.
 func GetDataDir() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -69,6 +77,15 @@ func GetDataDir() (string, error) {
 	return filepath.Join(homeDir, ".tally"), nil
 }
 
+// Init initializes the database and ensures the required schema is present.
+//
+// It creates necessary directories using [GetDataDir] and sets up the SQLite database at `tally.db`.
+// Schema definitions and migrations are applied to establish or update the database structure.
+//
+// - If the `activity` table is empty, it inserts a default row.
+// - Migrations are executed but may silently ignore errors related to redundant changes.
+//
+// Returns an error if directory creation or database initialization fails. Silent errors may occur for migrations.
 func Init() error {
 	dataDir, err := GetDataDir()
 	if err != nil {
@@ -105,6 +122,9 @@ func Init() error {
 	return err
 }
 
+// Close safely terminates the database connection held by DB.
+//
+// If DB is already nil, it does nothing and returns nil. Otherwise, it calls DB.Close() and returns any error that occurs.
 func Close() error {
 	if DB != nil {
 		return DB.Close()

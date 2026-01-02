@@ -3,17 +3,35 @@ package cli
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
 	"github.com/thinktide/tally/internal/db"
 	"github.com/thinktide/tally/internal/model"
-	"github.com/spf13/cobra"
 )
 
+// resumeCmd represents a command to resume a paused timer.
+//
+// This command updates the status of a paused timer back to "running" and continues tracking time.
+//
+// If no timer is paused, the command informs the user. If the timer is already running, it displays the current status.
 var resumeCmd = &cobra.Command{
 	Use:   "resume",
 	Short: "Resume the paused timer",
 	RunE:  runResume,
 }
 
+// runResume resumes a previously paused timer for an active project.
+//
+// If there is no active or paused timer, it prints a message indicating so and exits successfully.
+// If the timer is already running, it prints the current status without modification.
+//
+// The function retrieves the currently running or paused entry from the database using [db.GetRunningEntry].
+// If the entry is paused, it updates its status to running using [db.ResumeEntry] and prints a confirmation message.
+// If resumption fails due to a database error, it returns the error.
+//
+// - cmd: The Cobra command instance triggering this function.
+// - args: Additional arguments passed with the command.
+//
+// Returns an error if the database operations fail or if the timer resumption process encounters issues.
 func runResume(cmd *cobra.Command, args []string) error {
 	entry, err := db.GetRunningEntry()
 	if err != nil {

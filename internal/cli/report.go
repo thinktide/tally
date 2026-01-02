@@ -8,16 +8,32 @@ import (
 	"os"
 	"strings"
 
+	"github.com/olekukonko/tablewriter"
+	"github.com/spf13/cobra"
 	"github.com/thinktide/tally/internal/config"
 	"github.com/thinktide/tally/internal/db"
 	"github.com/thinktide/tally/internal/model"
 	"github.com/thinktide/tally/internal/service"
-	"github.com/olekukonko/tablewriter"
-	"github.com/spf13/cobra"
 )
 
+// reportFormat defines the output format for the report generation.
+//
+// It can be set to specific formats such as "table", "json", or "csv" to control how the report data is presented.
+// If not explicitly set, it may fall back to a default value from the configuration.
 var reportFormat string
 
+// reportCmd is a command that generates time reports for specified periods, projects, and tags.
+//
+// The command supports various time periods such as "today", "week", or "lastMonth".
+// Users can filter reports by specifying a project (using "@project") and/or tags (using "+tag").
+//
+// When executed, reportCmd parses the input arguments and generates a time summary.
+// The summary can be output in different formats such as table, JSON, and CSV.
+//
+// If no period is provided, the command offers an interactive menu to select a time period.
+//
+// Errors may occur if an invalid period is provided, or if specified projects or tags are not found.
+// The generated report includes aggregated durations by project and tags, with detailed entry data.
 var reportCmd = &cobra.Command{
 	Use:   "report [period] [@project] [+tag]...",
 	Short: "Generate time reports",
@@ -35,10 +51,28 @@ Examples:
 	RunE: runReport,
 }
 
+// init configures flags for the [reportCmd] command.
+//
+// The function binds the "format" flag to the variable reportFormat, allowing the use of different output formats:
+//   - format: Accepts "table", "json", or "csv" as values.
+//
+// This setup enables users to customize the output format when generating reports.
 func init() {
 	reportCmd.Flags().StringVar(&reportFormat, "format", "", "Output format: table, json, csv")
 }
 
+// runReport generates a report based on the provided options and arguments, and outputs it in the desired format.
+//
+// The function processes command arguments `args` to determine the report's period, project, and tags. If a period
+// is not specified, it prompts the user to select one interactively.
+//
+// - `cmd`: Represents the cobra.Command instance associated with this operation.
+// - `args`: Contains the arguments to specify the report scope, including period, project, or tags.
+//
+// The function validates the period, fetches data, and formats the report based on the configured or default output
+// format. Supported formats include JSON, CSV, and tabular rendering.
+//
+// Returns an error if any validation, data fetching, or report generation step fails.
 func runReport(cmd *cobra.Command, args []string) error {
 	// Get default format from config
 	if reportFormat == "" {
@@ -119,6 +153,14 @@ func runReport(cmd *cobra.Command, args []string) error {
 	}
 }
 
+// selectPeriod prompts the user to select a reporting period interactively.
+//
+// It displays a numbered list of all available periods from [service.AllPeriods], allowing the user to choose one.
+// If user input is invalid, an error is returned.
+//
+// Returns:
+//   - The selected [service.Period].
+//   - An error if input is invalid or reading input fails.
 func selectPeriod() (service.Period, error) {
 	fmt.Println("Select a report period:")
 	fmt.Println()
@@ -147,6 +189,15 @@ func selectPeriod() (service.Period, error) {
 	return service.AllPeriods[choice-1], nil
 }
 
+// outputTable generates and renders a formatted table from the given [model.ReportSummary].
+//
+// It displays data such as report period, individual entries, summaries by project, and summaries by tag in a human-readable table.
+// The function uses the [tablewriter] package to format the table output and ensures that long text is truncated for better readability.
+//
+// summary contains aggregated report details including total duration, grouped data by tags and projects, and individual entries.
+// If summary contains no entries or group data, only the total duration is printed.
+//
+// Returns nil upon successful execution or an error if there is an issue with the output generation.
 func outputTable(summary *model.ReportSummary) error {
 	fmt.Printf("\nReport: %s\n", summary.Period)
 	fmt.Printf("Period: %s to %s\n\n",
@@ -221,12 +272,34 @@ func outputTable(summary *model.ReportSummary) error {
 	return nil
 }
 
+// outputJSON writes the provided [model.ReportSummary] to the standard output in JSON format with indentation.
+//
+// The function uses a JSON encoder to serialize the [model.ReportSummary] object and ensures the output is formatted
+// in a human-readable manner with proper indentation.
+//
+// summary is the [model.ReportSummary] to be serialized and output.
+//
+// Returns an error if the encoding process fails, which might indicate issues such as the inability to write to stdout.
 func outputJSON(summary *model.ReportSummary) error {
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(summary)
 }
 
+// outputCSV writes the provided [model.ReportSummary] in CSV format to the standard output.
+//
+// The CSV output includes a header row followed by one row per entry in the report summary. Each row contains:
+// - the entry ID,
+// - project name,
+// - title,
+// - duration in minutes,
+// - associated tags,
+// - start time, and
+// - end time (if available).
+//
+// If the report summary contains no entries, only the header row will be written.
+//
+// Returns an error if writing to the CSV writer fails. Use [csv.NewWriter] for output formatting consistency.
 func outputCSV(summary *model.ReportSummary) error {
 	writer := csv.NewWriter(os.Stdout)
 	defer writer.Flush()

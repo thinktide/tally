@@ -6,12 +6,23 @@ import (
 	"os"
 	"strings"
 
-	"github.com/thinktide/tally/internal/db"
 	"github.com/spf13/cobra"
+	"github.com/thinktide/tally/internal/db"
 )
 
+// deleteForce specifies whether the delete operation should skip the user confirmation prompt.
 var deleteForce bool
 
+// deleteCmd represents the command to delete a time entry.
+//
+// Deletes a specific time entry when provided with an ID. Without an ID, it deletes the most recent entry.
+//
+// The command performs a confirmation prompt before deletion unless the --force flag is used to bypass it.
+//
+// Error cases include:
+//   - Failure to retrieve the last entry when no ID is provided.
+//   - Attempting to delete an entry that does not exist or cannot be found.
+//   - Errors during the deletion process in the database.
 var deleteCmd = &cobra.Command{
 	Use:   "delete [id]",
 	Short: "Delete a time entry",
@@ -25,10 +36,30 @@ Examples:
 	RunE: runDelete,
 }
 
+// init initializes the delete command's flags.
+//
+// This function configures the flags for the "delete" command, adding the "force" flag (`-f`) to bypass confirmation prompts.
+// The "force" flag is bound to the `deleteForce` variable to control whether user confirmation is required.
 func init() {
 	deleteCmd.Flags().BoolVarP(&deleteForce, "force", "f", false, "Skip confirmation prompt")
 }
 
+// runDelete deletes a specified time entry or the most recent one if no ID is provided.
+// It retrieves the entry details, displays them to confirm the deletion, and allows the user to cancel unless forced.
+//
+// If no arguments are passed, runDelete will fetch the most recent entry using [db.GetLastEntry].
+// If an entry ID is provided through args, it will fetch that specific entry using [db.GetEntryByID].
+//
+// The function prompts for confirmation before deletion unless `deleteForce` is set to true. After confirmation, it
+// deletes the entry using [db.DeleteEntry] and provides feedback to indicate whether the deletion was successful.
+//
+//	cmd: Represents the Cobra command invoked by the user.
+//	args: Contains the optional entry ID to delete.
+//
+// Returns an error in the following cases:
+//   - Failure to fetch the last entry or specified entry.
+//   - The entry ID does not exist in the database.
+//   - Errors occur during entry deletion.
 func runDelete(cmd *cobra.Command, args []string) error {
 	var entryID string
 
