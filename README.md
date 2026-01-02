@@ -8,7 +8,6 @@ A fast, simple CLI time tracking utility.
 - **Projects & tags** — organize with `@project` and `+tags`
 - **Reports** — daily, weekly, monthly summaries
 - **Offline-first** — all data stored locally in SQLite
-- **Sleep detection** — handles machine sleep gracefully
 - **Multiple output formats** — table, JSON, CSV
 
 ## Installation
@@ -125,8 +124,6 @@ tally config set output.format json            # Set a value
 | Key | Values | Default | Description |
 |-----|--------|---------|-------------|
 | `output.format` | table, json, csv | table | Default report format |
-| `sleep.auto_resume` | true, false | false | Auto-resume after sleep |
-| `sleep.count_sleep_time` | true, false | false | Include sleep time in duration |
 | `data.location` | path | ~/.tally | Data directory |
 
 ## Data Storage

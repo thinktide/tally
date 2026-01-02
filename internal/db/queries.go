@@ -469,25 +469,6 @@ func GetPausesForEntry(entryID string) ([]model.Pause, error) {
 	return pauses, rows.Err()
 }
 
-// Activity tracking
-
-func UpdateLastActivity() error {
-	_, err := DB.Exec("UPDATE activity SET last_activity = datetime('now') WHERE id = 1")
-	return err
-}
-
-func GetLastActivity() (*time.Time, error) {
-	var t time.Time
-	err := DB.QueryRow("SELECT last_activity FROM activity WHERE id = 1").Scan(&t)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &t, nil
-}
-
 // Config operations
 
 func GetConfig(key string) (string, error) {

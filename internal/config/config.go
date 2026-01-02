@@ -5,17 +5,13 @@ import (
 )
 
 const (
-	KeySleepAutoResume      = "sleep.auto_resume"
-	KeySleepCountSleepTime  = "sleep.count_sleep_time"
-	KeyOutputFormat         = "output.format"
-	KeyDataLocation         = "data.location"
+	KeyOutputFormat = "output.format"
+	KeyDataLocation = "data.location"
 )
 
 var defaults = map[string]string{
-	KeySleepAutoResume:     "false",
-	KeySleepCountSleepTime: "false",
-	KeyOutputFormat:        "table",
-	KeyDataLocation:        "~/.tally",
+	KeyOutputFormat: "table",
+	KeyDataLocation: "~/.tally",
 }
 
 func Get(key string) (string, error) {

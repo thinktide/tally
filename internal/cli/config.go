@@ -21,8 +21,6 @@ Examples:
   tally config set output.format json      # Set a value
 
 Available settings:
-  sleep.auto_resume       - Auto-resume timer after sleep (true/false)
-  sleep.count_sleep_time  - Include sleep time in duration (true/false)
   output.format           - Default output format (table/json/csv)
   data.location           - Data directory path`,
 }
@@ -108,10 +106,6 @@ func runConfigSet(cmd *cobra.Command, args []string) error {
 
 	// Validate values for known keys
 	switch key {
-	case config.KeySleepAutoResume, config.KeySleepCountSleepTime:
-		if value != "true" && value != "false" {
-			return fmt.Errorf("value must be 'true' or 'false'")
-		}
 	case config.KeyOutputFormat:
 		if value != "table" && value != "json" && value != "csv" {
 			return fmt.Errorf("value must be 'table', 'json', or 'csv'")

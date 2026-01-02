@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/thinktide/tally/internal/db"
-	"github.com/thinktide/tally/internal/sleep"
 	"github.com/spf13/cobra"
 )
 
@@ -24,17 +23,7 @@ var rootCmd = &cobra.Command{
 		if err := db.Init(); err != nil {
 			return fmt.Errorf("failed to initialize database: %w", err)
 		}
-
-		// Check for sleep/inactivity
-		if cmd.Name() != "config" {
-			if err := sleep.CheckAndHandleInactivity(); err != nil {
-				// Don't fail, just warn
-				fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
-			}
-		}
-
-		// Update last activity
-		return db.UpdateLastActivity()
+		return nil
 	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
 		db.Close()
