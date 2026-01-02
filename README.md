@@ -61,9 +61,14 @@ tally status
 ### Pause and resume
 
 ```bash
-tally pause
-tally resume
+tally pause                      # Pause now
+tally pause -f 09:00             # Record pause from 9am to now
+tally pause -f 09:00 -t 10:30    # Record pause from 9am to 10:30am
+
+tally resume                     # Resume paused timer, or reopen stopped entry
 ```
+
+When resuming a stopped entry, tally shows the entry details and asks for confirmation. A pause is created for the gap between the stop time and now.
 
 ### View log
 
@@ -82,7 +87,13 @@ tally edit                   # Edit most recent
 tally edit 01ABC123...       # Edit by ID
 ```
 
-Opens the entry as JSON in `$EDITOR` (defaults to vim). Edit fields, save, and quit to apply changes. Remove pauses from the array to delete them.
+Opens the entry as JSON in `$EDITOR` (defaults to vim). You can:
+- Edit project, title, tags, start/end times
+- Add new pauses (leave `id` empty)
+- Modify existing pause times
+- Remove pauses by deleting them from the array
+
+Each pause has a `reason` field: "Manual", "Display off", or "System sleep".
 
 ### Delete an entry
 
@@ -127,6 +138,15 @@ tally config set output.format json            # Set a value
 |-----|--------|---------|-------------|
 | `output.format` | table, json, csv | table | Default report format |
 | `data.location` | path | ~/.tally | Data directory |
+
+## Sleep Detection (macOS)
+
+Tally automatically detects when your computer sleeps while a timer is running. When you run any tally command after waking up, it creates pause records for the sleep periods.
+
+- **Display off** — screen sleep, screensaver
+- **System sleep** — lid close, system idle sleep
+
+Pauses are created automatically with the appropriate reason. Use `tally edit` to view, modify, or remove them.
 
 ## Data Storage
 
