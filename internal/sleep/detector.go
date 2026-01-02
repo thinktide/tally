@@ -1,9 +1,7 @@
 package sleep
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -17,6 +15,7 @@ import (
 type SleepPeriod struct {
 	SleepTime time.Time
 	WakeTime  time.Time
+	Reason    string // "Display off" or "System sleep"
 }
 
 func (s SleepPeriod) Duration() time.Duration {
@@ -63,41 +62,25 @@ func CheckAndHandleSleep() error {
 		return nil
 	}
 
-	// Calculate total sleep time
+	// Create pause records for each sleep period automatically
 	var totalSleep time.Duration
 	for _, sp := range unhandledSleep {
+		if err := createPauseForSleep(entry.ID, sp); err != nil {
+			return err
+		}
 		totalSleep += sp.Duration()
 	}
 
-	// Prompt user
-	fmt.Printf("\nDetected computer sleep during timer: %s\n", formatDuration(totalSleep))
+	// Inform user about the pauses that were created
+	fmt.Printf("\nDetected sleep during timer, created pause(s):\n")
 	for _, sp := range unhandledSleep {
-		fmt.Printf("  %s - %s (%s)\n",
+		fmt.Printf("  %s - %s (%s) [%s]\n",
 			sp.SleepTime.Format("15:04:05"),
 			sp.WakeTime.Format("15:04:05"),
-			formatDuration(sp.Duration()))
+			formatDuration(sp.Duration()),
+			sp.Reason)
 	}
-	fmt.Println()
-
-	fmt.Print("Exclude sleep time from duration? [Y/n]: ")
-	reader := bufio.NewReader(os.Stdin)
-	input, err := reader.ReadString('\n')
-	if err != nil {
-		return err
-	}
-	input = strings.TrimSpace(strings.ToLower(input))
-
-	if input == "" || input == "y" || input == "yes" {
-		// Create pause records for each sleep period
-		for _, sp := range unhandledSleep {
-			if err := createPauseForSleep(entry.ID, sp); err != nil {
-				return err
-			}
-		}
-		fmt.Printf("Excluded %s of sleep time\n", formatDuration(totalSleep))
-	} else {
-		fmt.Println("Sleep time included in duration")
-	}
+	fmt.Printf("Total: %s (use 'tally edit' to modify)\n\n", formatDuration(totalSleep))
 
 	return nil
 }
@@ -115,40 +98,90 @@ func getSleepPeriodsSince(since time.Time) ([]SleepPeriod, error) {
 
 func parsePmsetLog(log string, since time.Time) ([]SleepPeriod, error) {
 	// Regex patterns for sleep and wake events
-	// Format: 2026-01-01 18:40:56 -0500 Sleep               	Entering Sleep state
-	// Format: 2026-01-01 18:44:41 -0500 Wake                	Wake from Deep Idle
-	sleepPattern := regexp.MustCompile(`^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) [+-]\d{4}\s+Sleep\s+Entering Sleep state`)
-	wakePattern := regexp.MustCompile(`^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) [+-]\d{4}\s+Wake\s+(Wake from|DarkWake to FullWake)`)
+	// System sleep: 2026-01-01 18:40:56 -0500 Sleep               	Entering Sleep state
+	// System wake:  2026-01-01 18:44:41 -0500 Wake                	Wake from Deep Idle
+	// Display off:  2026-01-01 08:22:58 -0500 Notification        	Display is turned off
+	// Display on:   2026-01-01 08:25:25 -0500 Notification        	Display is turned on
 
-	var sleepTimes []time.Time
-	var wakeTimes []time.Time
+	systemSleepPattern := regexp.MustCompile(`^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) [+-]\d{4}\s+Sleep\s+Entering Sleep state`)
+	systemWakePattern := regexp.MustCompile(`^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) [+-]\d{4}\s+Wake\s+(Wake from|DarkWake to FullWake)`)
+	displayOffPattern := regexp.MustCompile(`^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) [+-]\d{4}\s+Notification\s+Display is turned off`)
+	displayOnPattern := regexp.MustCompile(`^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) [+-]\d{4}\s+Notification\s+Display is turned on`)
+
+	type event struct {
+		time     time.Time
+		isStart  bool   // true = sleep/display off, false = wake/display on
+		isSystem bool   // true = system sleep, false = display off
+	}
+
+	var events []event
 
 	lines := strings.Split(log, "\n")
 	for _, line := range lines {
-		if match := sleepPattern.FindStringSubmatch(line); match != nil {
-			t, err := time.ParseInLocation("2006-01-02 15:04:05", match[1], time.Local)
-			if err == nil && t.After(since) {
-				sleepTimes = append(sleepTimes, t)
-			}
-		} else if match := wakePattern.FindStringSubmatch(line); match != nil {
-			t, err := time.ParseInLocation("2006-01-02 15:04:05", match[1], time.Local)
-			if err == nil && t.After(since) {
-				wakeTimes = append(wakeTimes, t)
-			}
+		var t time.Time
+		var isStart bool
+		var isSystem bool
+		var matched bool
+
+		if match := systemSleepPattern.FindStringSubmatch(line); match != nil {
+			t, _ = time.ParseInLocation("2006-01-02 15:04:05", match[1], time.Local)
+			isStart = true
+			isSystem = true
+			matched = true
+		} else if match := systemWakePattern.FindStringSubmatch(line); match != nil {
+			t, _ = time.ParseInLocation("2006-01-02 15:04:05", match[1], time.Local)
+			isStart = false
+			isSystem = true
+			matched = true
+		} else if match := displayOffPattern.FindStringSubmatch(line); match != nil {
+			t, _ = time.ParseInLocation("2006-01-02 15:04:05", match[1], time.Local)
+			isStart = true
+			isSystem = false
+			matched = true
+		} else if match := displayOnPattern.FindStringSubmatch(line); match != nil {
+			t, _ = time.ParseInLocation("2006-01-02 15:04:05", match[1], time.Local)
+			isStart = false
+			isSystem = false
+			matched = true
+		}
+
+		if matched && t.After(since) {
+			events = append(events, event{time: t, isStart: isStart, isSystem: isSystem})
 		}
 	}
 
-	// Match sleep/wake pairs
+	// Build sleep periods from events
+	// We need to pair off -> on events, handling overlapping system/display sleep
 	var periods []SleepPeriod
-	for _, sleepTime := range sleepTimes {
-		// Find the next wake time after this sleep
-		for _, wakeTime := range wakeTimes {
-			if wakeTime.After(sleepTime) {
-				periods = append(periods, SleepPeriod{
-					SleepTime: sleepTime,
-					WakeTime:  wakeTime,
-				})
-				break
+	var sleepStart *time.Time
+	var sleepIsSystem bool
+
+	for _, e := range events {
+		if e.isStart {
+			if sleepStart == nil {
+				sleepStart = &e.time
+				sleepIsSystem = e.isSystem
+			} else if e.isSystem && !sleepIsSystem {
+				// System sleep overrides display off
+				sleepIsSystem = true
+			}
+		} else {
+			if sleepStart != nil {
+				// Only count if sleep was more than 1 minute (ignore brief display flickers)
+				duration := e.time.Sub(*sleepStart)
+				if duration >= time.Minute {
+					reason := "Display off"
+					if sleepIsSystem {
+						reason = "System sleep"
+					}
+					periods = append(periods, SleepPeriod{
+						SleepTime: *sleepStart,
+						WakeTime:  e.time,
+						Reason:    reason,
+					})
+				}
+				sleepStart = nil
+				sleepIsSystem = false
 			}
 		}
 	}
@@ -159,8 +192,8 @@ func parsePmsetLog(log string, since time.Time) ([]SleepPeriod, error) {
 func createPauseForSleep(entryID string, sp SleepPeriod) error {
 	pauseID := model.NewULID()
 	_, err := db.DB.Exec(
-		"INSERT INTO pauses (id, entry_id, pause_time, resume_time) VALUES (?, ?, ?, ?)",
-		pauseID, entryID, sp.SleepTime, sp.WakeTime)
+		"INSERT INTO pauses (id, entry_id, pause_time, resume_time, reason) VALUES (?, ?, ?, ?, ?)",
+		pauseID, entryID, sp.SleepTime, sp.WakeTime, sp.Reason)
 	return err
 }
 
