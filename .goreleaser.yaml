@@ -14,42 +14,20 @@ builds:
       - CGO_ENABLED=1
     goos:
       - darwin
-      - linux
     goarch:
       - amd64
       - arm64
     ldflags:
       - -s -w
       - -X github.com/thinktide/tally/internal/cli.Version={{.Version}}
-    # CGO is needed for sqlite3, so we need to handle cross-compilation carefully
-    overrides:
-      - goos: darwin
-        goarch: amd64
-        env:
-          - CGO_ENABLED=1
-          - CC=o64-clang
-      - goos: darwin
-        goarch: arm64
-        env:
-          - CGO_ENABLED=1
-      - goos: linux
-        goarch: amd64
-        env:
-          - CGO_ENABLED=1
-          - CC=x86_64-linux-gnu-gcc
-      - goos: linux
-        goarch: arm64
-        env:
-          - CGO_ENABLED=1
-          - CC=aarch64-linux-gnu-gcc
 
 archives:
   - id: default
     format: tar.gz
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
-      - LICENSE*
-      - README*
+      - LICENSE
+      - README.md
 
 checksum:
   name_template: 'checksums.txt'
@@ -74,6 +52,7 @@ brews:
     repository:
       owner: thinktide
       name: homebrew-tally
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: "https://github.com/thinktide/tally"
     description: "CLI time tracking utility"
     license: "MIT"
