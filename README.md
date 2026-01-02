@@ -82,6 +82,8 @@ tally edit                   # Edit most recent
 tally edit 01ABC123...       # Edit by ID
 ```
 
+Opens the entry as JSON in `$EDITOR` (defaults to vim). Edit fields, save, and quit to apply changes. Remove pauses from the array to delete them.
+
 ### Delete an entry
 
 ```bash
