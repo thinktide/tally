@@ -1,0 +1,83 @@
+version: 2
+
+project_name: tally
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: tally
+    main: ./cmd/tally
+    binary: tally
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/jdecarlo/tally/internal/cli.Version={{.Version}}
+    # CGO is needed for sqlite3, so we need to handle cross-compilation carefully
+    overrides:
+      - goos: darwin
+        goarch: amd64
+        env:
+          - CGO_ENABLED=1
+          - CC=o64-clang
+      - goos: darwin
+        goarch: arm64
+        env:
+          - CGO_ENABLED=1
+      - goos: linux
+        goarch: amd64
+        env:
+          - CGO_ENABLED=1
+          - CC=x86_64-linux-gnu-gcc
+      - goos: linux
+        goarch: arm64
+        env:
+          - CGO_ENABLED=1
+          - CC=aarch64-linux-gnu-gcc
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE*
+      - README*
+
+checksum:
+  name_template: 'checksums.txt'
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+
+release:
+  github:
+    owner: jdecarlo
+    name: tally
+  draft: false
+  prerelease: auto
+
+brews:
+  - name: tally
+    repository:
+      owner: jdecarlo
+      name: homebrew-tally
+    homepage: "https://github.com/jdecarlo/tally"
+    description: "CLI time tracking utility"
+    license: "MIT"
+    install: |
+      bin.install "tally"
+    test: |
+      system "#{bin}/tally", "version"
