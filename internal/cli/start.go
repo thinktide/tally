@@ -48,7 +48,7 @@ func runStart(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get or create tags
-	var tagIDs []int64
+	var tagIDs []string
 	for _, name := range tagNames {
 		tag, err := db.GetOrCreateTag(name)
 		if err != nil {

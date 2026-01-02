@@ -85,8 +85,8 @@ func GetPeriodDateRange(period Period) (start, end time.Time) {
 
 type ReportOptions struct {
 	Period    Period
-	ProjectID *int64
-	TagIDs    []int64
+	ProjectID *string
+	TagIDs    []string
 }
 
 func GenerateReport(opts ReportOptions) (*model.ReportSummary, error) {

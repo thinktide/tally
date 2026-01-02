@@ -12,20 +12,20 @@ var DB *sql.DB
 
 const schema = `
 CREATE TABLE IF NOT EXISTS projects (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS tags (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS entries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    project_id INTEGER NOT NULL,
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
     title TEXT,
     start_time DATETIME NOT NULL,
     end_time DATETIME,
@@ -34,16 +34,16 @@ CREATE TABLE IF NOT EXISTS entries (
 );
 
 CREATE TABLE IF NOT EXISTS entry_tags (
-    entry_id INTEGER,
-    tag_id INTEGER,
+    entry_id TEXT,
+    tag_id TEXT,
     PRIMARY KEY (entry_id, tag_id),
     FOREIGN KEY (entry_id) REFERENCES entries(id),
     FOREIGN KEY (tag_id) REFERENCES tags(id)
 );
 
 CREATE TABLE IF NOT EXISTS pauses (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    entry_id INTEGER NOT NULL,
+    id TEXT PRIMARY KEY,
+    entry_id TEXT NOT NULL,
     pause_time DATETIME NOT NULL,
     resume_time DATETIME,
     FOREIGN KEY (entry_id) REFERENCES entries(id)

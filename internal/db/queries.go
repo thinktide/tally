@@ -21,13 +21,10 @@ func GetOrCreateProject(name string) (*model.Project, error) {
 		return nil, err
 	}
 
-	// Create new project
-	result, err := DB.Exec("INSERT INTO projects (name) VALUES (?)", name)
-	if err != nil {
-		return nil, err
-	}
-
-	id, err := result.LastInsertId()
+	// Create new project with ULID
+	id := model.NewULID()
+	now := time.Now()
+	_, err = DB.Exec("INSERT INTO projects (id, name, created_at) VALUES (?, ?, ?)", id, name, now)
 	if err != nil {
 		return nil, err
 	}
@@ -35,11 +32,11 @@ func GetOrCreateProject(name string) (*model.Project, error) {
 	return &model.Project{
 		ID:        id,
 		Name:      name,
-		CreatedAt: time.Now(),
+		CreatedAt: now,
 	}, nil
 }
 
-func GetProjectByID(id int64) (*model.Project, error) {
+func GetProjectByID(id string) (*model.Project, error) {
 	var p model.Project
 	err := DB.QueryRow("SELECT id, name, created_at FROM projects WHERE id = ?", id).
 		Scan(&p.ID, &p.Name, &p.CreatedAt)
@@ -62,12 +59,9 @@ func GetOrCreateTag(name string) (*model.Tag, error) {
 		return nil, err
 	}
 
-	result, err := DB.Exec("INSERT INTO tags (name) VALUES (?)", name)
-	if err != nil {
-		return nil, err
-	}
-
-	id, err := result.LastInsertId()
+	id := model.NewULID()
+	now := time.Now()
+	_, err = DB.Exec("INSERT INTO tags (id, name, created_at) VALUES (?, ?, ?)", id, name, now)
 	if err != nil {
 		return nil, err
 	}
@@ -75,11 +69,11 @@ func GetOrCreateTag(name string) (*model.Tag, error) {
 	return &model.Tag{
 		ID:        id,
 		Name:      name,
-		CreatedAt: time.Now(),
+		CreatedAt: now,
 	}, nil
 }
 
-func GetTagsForEntry(entryID int64) ([]model.Tag, error) {
+func GetTagsForEntry(entryID string) ([]model.Tag, error) {
 	rows, err := DB.Query(`
 		SELECT t.id, t.name, t.created_at
 		FROM tags t
@@ -103,22 +97,18 @@ func GetTagsForEntry(entryID int64) ([]model.Tag, error) {
 
 // Entry operations
 
-func CreateEntry(projectID int64, title string, tagIDs []int64) (*model.Entry, error) {
+func CreateEntry(projectID string, title string, tagIDs []string) (*model.Entry, error) {
 	tx, err := DB.Begin()
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback()
 
+	entryID := model.NewULID()
 	now := time.Now()
-	result, err := tx.Exec(
-		"INSERT INTO entries (project_id, title, start_time, status) VALUES (?, ?, ?, ?)",
-		projectID, title, now, model.StatusRunning)
-	if err != nil {
-		return nil, err
-	}
-
-	entryID, err := result.LastInsertId()
+	_, err = tx.Exec(
+		"INSERT INTO entries (id, project_id, title, start_time, status) VALUES (?, ?, ?, ?, ?)",
+		entryID, projectID, title, now, model.StatusRunning)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +177,7 @@ func GetRunningEntry() (*model.Entry, error) {
 	return &e, nil
 }
 
-func GetEntryByID(id int64) (*model.Entry, error) {
+func GetEntryByID(id string) (*model.Entry, error) {
 	var e model.Entry
 	var endTime sql.NullTime
 	err := DB.QueryRow(`
@@ -223,7 +213,7 @@ func GetEntryByID(id int64) (*model.Entry, error) {
 }
 
 func GetLastEntry() (*model.Entry, error) {
-	var id int64
+	var id string
 	err := DB.QueryRow("SELECT id FROM entries ORDER BY start_time DESC LIMIT 1").Scan(&id)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -234,7 +224,7 @@ func GetLastEntry() (*model.Entry, error) {
 	return GetEntryByID(id)
 }
 
-func StopEntry(id int64) error {
+func StopEntry(id string) error {
 	now := time.Now()
 
 	// Close any open pauses first
@@ -247,16 +237,17 @@ func StopEntry(id int64) error {
 	return err
 }
 
-func PauseEntry(id int64) error {
+func PauseEntry(id string) error {
 	tx, err := DB.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
+	pauseID := model.NewULID()
 	now := time.Now()
 
-	_, err = tx.Exec("INSERT INTO pauses (entry_id, pause_time) VALUES (?, ?)", id, now)
+	_, err = tx.Exec("INSERT INTO pauses (id, entry_id, pause_time) VALUES (?, ?, ?)", pauseID, id, now)
 	if err != nil {
 		return err
 	}
@@ -269,7 +260,7 @@ func PauseEntry(id int64) error {
 	return tx.Commit()
 }
 
-func ResumeEntry(id int64) error {
+func ResumeEntry(id string) error {
 	tx, err := DB.Begin()
 	if err != nil {
 		return err
@@ -291,7 +282,7 @@ func ResumeEntry(id int64) error {
 	return tx.Commit()
 }
 
-func UpdateEntry(id int64, projectID int64, title string, startTime, endTime *time.Time, tagIDs []int64) error {
+func UpdateEntry(id string, projectID string, title string, startTime, endTime *time.Time, tagIDs []string) error {
 	tx, err := DB.Begin()
 	if err != nil {
 		return err
@@ -330,8 +321,8 @@ func UpdateEntry(id int64, projectID int64, title string, startTime, endTime *ti
 
 type ListEntriesOptions struct {
 	Limit     int
-	ProjectID *int64
-	TagIDs    []int64
+	ProjectID *string
+	TagIDs    []string
 	From      *time.Time
 	To        *time.Time
 }
@@ -424,7 +415,7 @@ func repeatString(s string, n int) string {
 
 // Pause operations
 
-func GetPausesForEntry(entryID int64) ([]model.Pause, error) {
+func GetPausesForEntry(entryID string) ([]model.Pause, error) {
 	rows, err := DB.Query(`
 		SELECT id, entry_id, pause_time, resume_time
 		FROM pauses

@@ -134,12 +134,13 @@ func handleInactivityGap(entry *model.Entry, lastActivity time.Time, gap time.Du
 	return nil
 }
 
-func createPauseForGap(entryID int64, pauseStart time.Time) error {
+func createPauseForGap(entryID string, pauseStart time.Time) error {
 	// Insert a pause record with the gap
+	pauseID := model.NewULID()
 	now := time.Now()
 	_, err := db.DB.Exec(
-		"INSERT INTO pauses (entry_id, pause_time, resume_time) VALUES (?, ?, ?)",
-		entryID, pauseStart, now)
+		"INSERT INTO pauses (id, entry_id, pause_time, resume_time) VALUES (?, ?, ?, ?)",
+		pauseID, entryID, pauseStart, now)
 	return err
 }
 

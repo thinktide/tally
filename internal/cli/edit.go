@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -25,7 +24,7 @@ Examples:
 }
 
 func runEdit(cmd *cobra.Command, args []string) error {
-	var entryID int64
+	var entryID string
 
 	if len(args) == 0 {
 		// Edit most recent entry
@@ -39,11 +38,7 @@ func runEdit(cmd *cobra.Command, args []string) error {
 		}
 		entryID = entry.ID
 	} else {
-		id, err := strconv.ParseInt(args[0], 10, 64)
-		if err != nil {
-			return fmt.Errorf("invalid entry ID: %w", err)
-		}
-		entryID = id
+		entryID = args[0]
 	}
 
 	entry, err := db.GetEntryByID(entryID)
@@ -51,7 +46,7 @@ func runEdit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("entry not found: %w", err)
 	}
 
-	fmt.Printf("Editing entry #%d\n", entry.ID)
+	fmt.Printf("Editing entry %s\n", entry.ID)
 	fmt.Println("Press Enter to keep current value, or type a new value.\n")
 
 	reader := bufio.NewReader(os.Stdin)
@@ -61,7 +56,7 @@ func runEdit(cmd *cobra.Command, args []string) error {
 	projectInput, _ := reader.ReadString('\n')
 	projectInput = strings.TrimSpace(projectInput)
 
-	var projectID int64 = entry.ProjectID
+	projectID := entry.ProjectID
 	if projectInput != "" {
 		projectName := strings.TrimPrefix(projectInput, "@")
 		project, err := db.GetOrCreateProject(projectName)
@@ -102,10 +97,10 @@ func runEdit(cmd *cobra.Command, args []string) error {
 	tagsInput, _ := reader.ReadString('\n')
 	tagsInput = strings.TrimSpace(tagsInput)
 
-	var tagIDs []int64
+	var tagIDs []string
 	if tagsInput != "" {
 		if tagsInput == "-" {
-			tagIDs = []int64{}
+			tagIDs = []string{}
 		} else {
 			tagNames := strings.Fields(tagsInput)
 			for _, name := range tagNames {

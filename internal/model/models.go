@@ -1,15 +1,25 @@
 package model
 
-import "time"
+import (
+	"crypto/rand"
+	"time"
+
+	"github.com/oklog/ulid/v2"
+)
+
+// NewULID generates a new ULID
+func NewULID() string {
+	return ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader).String()
+}
 
 type Project struct {
-	ID        int64     `json:"id"`
+	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
 type Tag struct {
-	ID        int64     `json:"id"`
+	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -23,8 +33,8 @@ const (
 )
 
 type Entry struct {
-	ID        int64       `json:"id"`
-	ProjectID int64       `json:"project_id"`
+	ID        string      `json:"id"`
+	ProjectID string      `json:"project_id"`
 	Project   *Project    `json:"project,omitempty"`
 	Title     string      `json:"title"`
 	StartTime time.Time   `json:"start_time"`
@@ -57,8 +67,8 @@ func (e *Entry) Duration() time.Duration {
 }
 
 type Pause struct {
-	ID         int64      `json:"id"`
-	EntryID    int64      `json:"entry_id"`
+	ID         string     `json:"id"`
+	EntryID    string     `json:"entry_id"`
 	PauseTime  time.Time  `json:"pause_time"`
 	ResumeTime *time.Time `json:"resume_time,omitempty"`
 }
@@ -72,8 +82,8 @@ func (p *Pause) Duration() time.Duration {
 }
 
 type EntryTag struct {
-	EntryID int64 `json:"entry_id"`
-	TagID   int64 `json:"tag_id"`
+	EntryID string `json:"entry_id"`
+	TagID   string `json:"tag_id"`
 }
 
 // ReportEntry is used for report output

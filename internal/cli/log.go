@@ -135,7 +135,7 @@ func printEntriesTable(entries []model.Entry) {
 		}
 
 		table.Append([]string{
-			fmt.Sprintf("%d", e.ID),
+			e.ID,
 			"@" + e.Project.Name,
 			title,
 			durationStr,
