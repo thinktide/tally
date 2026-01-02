@@ -1,5 +1,5 @@
-# Created by https://www.toptal.com/developers/gitignore/api/homebrew,goland+all,go,macos
-# Edit at https://www.toptal.com/developers/gitignore?templates=homebrew,goland+all,go,macos
+# Binary
+tally
 
 # Build outputs
 bin/

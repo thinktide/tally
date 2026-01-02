@@ -149,40 +149,9 @@ func selectPeriod() (service.Period, error) {
 
 func outputTable(summary *model.ReportSummary) error {
 	fmt.Printf("\nReport: %s\n", summary.Period)
-	fmt.Printf("Period: %s to %s\n",
+	fmt.Printf("Period: %s to %s\n\n",
 		summary.StartDate.Format("2006-01-02"),
 		summary.EndDate.Add(-1).Format("2006-01-02"))
-	fmt.Printf("Total: %s\n\n", formatDuration(summary.TotalDuration))
-
-	if len(summary.ByProject) > 0 {
-		fmt.Println("By Project:")
-		table := tablewriter.NewWriter(os.Stdout)
-		table.SetBorder(false)
-		table.SetHeaderLine(false)
-		table.SetColumnSeparator("")
-		table.SetTablePadding("  ")
-
-		for name, dur := range summary.ByProject {
-			table.Append([]string{"  @" + name, formatDurationShort(dur)})
-		}
-		table.Render()
-		fmt.Println()
-	}
-
-	if len(summary.ByTag) > 0 {
-		fmt.Println("By Tag:")
-		table := tablewriter.NewWriter(os.Stdout)
-		table.SetBorder(false)
-		table.SetHeaderLine(false)
-		table.SetColumnSeparator("")
-		table.SetTablePadding("  ")
-
-		for name, dur := range summary.ByTag {
-			table.Append([]string{"  +" + name, formatDurationShort(dur)})
-		}
-		table.Render()
-		fmt.Println()
-	}
 
 	if len(summary.Entries) > 0 {
 		fmt.Println("Entries:")
@@ -214,7 +183,40 @@ func outputTable(summary *model.ReportSummary) error {
 			})
 		}
 		table.Render()
+		fmt.Println()
 	}
+
+	if len(summary.ByProject) > 0 {
+		fmt.Println("By Project:")
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetBorder(false)
+		table.SetHeaderLine(false)
+		table.SetColumnSeparator("")
+		table.SetTablePadding("  ")
+
+		for name, dur := range summary.ByProject {
+			table.Append([]string{"  @" + name, formatDurationShort(dur)})
+		}
+		table.Render()
+		fmt.Println()
+	}
+
+	if len(summary.ByTag) > 0 {
+		fmt.Println("By Tag:")
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetBorder(false)
+		table.SetHeaderLine(false)
+		table.SetColumnSeparator("")
+		table.SetTablePadding("  ")
+
+		for name, dur := range summary.ByTag {
+			table.Append([]string{"  +" + name, formatDurationShort(dur)})
+		}
+		table.Render()
+		fmt.Println()
+	}
+
+	fmt.Printf("Total: %s\n", formatDuration(summary.TotalDuration))
 
 	return nil
 }
