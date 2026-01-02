@@ -2,10 +2,16 @@ package cli
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/thinktide/tally/internal/db"
 	"github.com/thinktide/tally/internal/model"
+)
+
+var (
+	pauseFrom string
+	pauseTo   string
 )
 
 // pauseCmd represents a command to pause the currently running timer.
@@ -16,24 +22,43 @@ import (
 var pauseCmd = &cobra.Command{
 	Use:   "pause",
 	Short: "Pause the current timer",
-	RunE:  runPause,
+	Long: `Pause the current timer or record a historical pause.
+
+Examples:
+  tally pause                    # Pause now
+  tally pause -f 09:00           # Record pause from 9am to now
+  tally pause -f 09:00 -t 10:30  # Record pause from 9am to 10:30am`,
+	RunE: runPause,
 }
 
-// runPause halts the currently running timer, changing its status to paused.
-//
-// The function first identifies the active timer entry using [db.GetRunningEntry]. If no such entry exists,
-// it prints a message indicating that no timer is running and exits successfully.
-//
-// If the detected timer entry is already paused (status [model.StatusPaused]), it notifies the user and displays
-// the current status using [printStatus].
-//
-// Otherwise, it executes the pause operation via [db.PauseEntry], associates it with the reason "Manual," and
-// updates the timer's status to paused.
-//
-// The function then confirms the pause by printing appropriate feedback, including the associated project name,
-// an optional title, and the timer's elapsed duration.
-//
-// Returns an error in cases like failing to fetch the active entry or issues during the database update.
+func init() {
+	pauseCmd.Flags().StringVarP(&pauseFrom, "from", "f", "", "Pause start time (HH:MM or YYYY-MM-DD HH:MM:SS)")
+	pauseCmd.Flags().StringVarP(&pauseTo, "to", "t", "", "Pause end time (HH:MM or YYYY-MM-DD HH:MM:SS)")
+}
+
+// parseTimeInput parses a time string in various formats.
+// Supports: "HH:MM", "HH:MM:SS", "YYYY-MM-DD HH:MM:SS"
+func parseTimeInput(input string) (time.Time, error) {
+	now := time.Now()
+
+	// Try full datetime first
+	if t, err := time.ParseInLocation("2006-01-02 15:04:05", input, time.Local); err == nil {
+		return t, nil
+	}
+
+	// Try HH:MM:SS (today)
+	if t, err := time.ParseInLocation("15:04:05", input, time.Local); err == nil {
+		return time.Date(now.Year(), now.Month(), now.Day(), t.Hour(), t.Minute(), t.Second(), 0, time.Local), nil
+	}
+
+	// Try HH:MM (today)
+	if t, err := time.ParseInLocation("15:04", input, time.Local); err == nil {
+		return time.Date(now.Year(), now.Month(), now.Day(), t.Hour(), t.Minute(), 0, 0, time.Local), nil
+	}
+
+	return time.Time{}, fmt.Errorf("invalid time format: %s (use HH:MM, HH:MM:SS, or YYYY-MM-DD HH:MM:SS)", input)
+}
+
 func runPause(cmd *cobra.Command, args []string) error {
 	entry, err := db.GetRunningEntry()
 	if err != nil {
@@ -44,6 +69,46 @@ func runPause(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	// Handle historical pause with --from flag
+	if pauseFrom != "" {
+		fromTime, err := parseTimeInput(pauseFrom)
+		if err != nil {
+			return err
+		}
+
+		// Validate from time is after entry start
+		if fromTime.Before(entry.StartTime) {
+			return fmt.Errorf("pause start time cannot be before entry start time (%s)", entry.StartTime.Format("15:04:05"))
+		}
+
+		// Default to now if --to not specified
+		toTime := time.Now()
+		if pauseTo != "" {
+			toTime, err = parseTimeInput(pauseTo)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Validate to time is after from time
+		if toTime.Before(fromTime) {
+			return fmt.Errorf("pause end time cannot be before pause start time")
+		}
+
+		// Create the historical pause (completed, doesn't change entry status)
+		_, err = db.CreatePause(entry.ID, fromTime, &toTime, "Manual")
+		if err != nil {
+			return fmt.Errorf("failed to create pause: %w", err)
+		}
+
+		fmt.Printf("Added pause: %s - %s (%s)\n",
+			fromTime.Format("15:04:05"),
+			toTime.Format("15:04:05"),
+			formatDuration(toTime.Sub(fromTime)))
+		return nil
+	}
+
+	// Regular pause (pause now)
 	if entry.Status == model.StatusPaused {
 		fmt.Println("Timer is already paused")
 		printStatus(entry)
