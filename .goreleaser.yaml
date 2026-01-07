@@ -11,18 +11,13 @@ builds:
     main: ./cmd/tally
     binary: tally
     env:
-      - CGO_ENABLED=1
+      - CGO_ENABLED=0
     goos:
       - darwin
       - linux
     goarch:
       - amd64
       - arm64
-    ignore:
-      # Cross-compilation with CGO is complex; skip non-native builds
-      # Each platform is built on its native runner via GitHub Actions matrix
-      - goos: linux
-        goarch: arm64
     ldflags:
       - -s -w
       - -X github.com/thinktide/tally/internal/cli.Version={{.Version}}
