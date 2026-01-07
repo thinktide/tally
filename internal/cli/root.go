@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thinktide/tally/internal/db"
-	"github.com/thinktide/tally/internal/sleep"
 )
 
 // Version indicates the current build version of the application. Defaults to "dev" if not explicitly set.
@@ -14,7 +13,7 @@ var Version = "dev"
 
 // rootCmd is the primary command for the CLI, serving as the entry point for all subcommands.
 //
-// It initializes necessary resources like the database and handles sleep-related events before executing a command.
+// It initializes necessary resources like the database before executing a command.
 // On completion, it ensures resources such as the database connection are properly closed.
 var rootCmd = &cobra.Command{
 	Use:   "tally",
@@ -28,13 +27,6 @@ var rootCmd = &cobra.Command{
 
 		if err := db.Init(); err != nil {
 			return fmt.Errorf("failed to initialize database: %w", err)
-		}
-
-		// Check for sleep events during running timer
-		if cmd.Name() != "config" && cmd.Name() != "status" {
-			if err := sleep.CheckAndHandleSleep(); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
-			}
 		}
 
 		return nil

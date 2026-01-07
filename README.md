@@ -139,15 +139,6 @@ tally config set output.format json            # Set a value
 | `output.format` | table, json, csv | table | Default report format |
 | `data.location` | path | ~/.tally | Data directory |
 
-## Sleep Detection (macOS)
-
-Tally automatically detects when your computer sleeps while a timer is running. When you run any tally command after waking up, it creates pause records for the sleep periods.
-
-- **Display off** — screen sleep, screensaver
-- **System sleep** — lid close, system idle sleep
-
-Pauses are created automatically with the appropriate reason. Use `tally edit` to view, modify, or remove them.
-
 ## Data Storage
 
 All data is stored locally in `~/.tally/tally.db` (SQLite).
