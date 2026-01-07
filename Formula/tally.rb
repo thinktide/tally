@@ -12,6 +12,7 @@ class Tally < Formula
   homepage "https://github.com/thinktide/tally"
   version "0.1.0"
   license "MIT"
+  bottle :unneeded
 
   on_macos do
     if Hardware::CPU.arm?
