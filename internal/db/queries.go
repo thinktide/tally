@@ -191,6 +191,49 @@ func CreateEntry(projectID string, title string, tagIDs []string) (*model.Entry,
 	}, nil
 }
 
+// CreateEntryAt creates a new time entry with a specified start time, associating it with a project and optional tags.
+func CreateEntryAt(projectID string, title string, tagIDs []string, startTime time.Time) (*model.Entry, error) {
+	tx, err := DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	entryID := model.NewULID()
+	_, err = tx.Exec(
+		"INSERT INTO entries (id, project_id, title, start_time, status) VALUES (?, ?, ?, ?, ?)",
+		entryID, projectID, title, startTime, model.StatusRunning)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, tagID := range tagIDs {
+		_, err = tx.Exec("INSERT INTO entry_tags (entry_id, tag_id) VALUES (?, ?)", entryID, tagID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return GetEntryByID(entryID)
+}
+
+// GetLastEntryForProject retrieves the most recent entry for a given project ID.
+func GetLastEntryForProject(projectID string) (*model.Entry, error) {
+	var id string
+	err := DB.QueryRow("SELECT id FROM entries WHERE project_id = ? ORDER BY start_time DESC LIMIT 1", projectID).Scan(&id)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return GetEntryByID(id)
+}
+
 // GetRunningEntry retrieves the most recent time entry with a status of 'running' or 'paused'.
 //
 // It queries the database for the active entry, ordering by start time in descending order, and applies limitations to return
