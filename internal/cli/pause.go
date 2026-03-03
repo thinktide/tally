@@ -1,7 +1,11 @@
 package cli
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -20,14 +24,16 @@ var (
 //
 // If no timer is running, the command informs the user. If the timer is already paused, it notifies the user of its current state.
 var pauseCmd = &cobra.Command{
-	Use:   "pause",
-	Short: "Pause the current timer",
-	Long: `Pause the current timer or record a historical pause.
+	Use:   "pause [id]",
+	Short: "Pause the current timer or add a pause to a past entry",
+	Long: `Pause the current timer, record a historical pause, or add a pause to any entry by ID.
 
 Examples:
   tally pause                    # Pause now
   tally pause -f 09:00           # Record pause from 9am to now
-  tally pause -f 09:00 -t 10:30  # Record pause from 9am to 10:30am`,
+  tally pause -f 09:00 -t 10:30  # Record pause from 9am to 10:30am
+  tally pause 01JQXYZ123         # Add a pause to a past entry by ID`,
+	Args: cobra.MaximumNArgs(1),
 	RunE: runPause,
 }
 
@@ -41,8 +47,16 @@ func init() {
 func parseTimeInput(input string) (time.Time, error) {
 	now := time.Now()
 
-	// Try full datetime first
+	// Strip surrounding quotes (single or double)
+	input = strings.Trim(input, "\"'")
+
+	// Try full datetime with seconds
 	if t, err := time.ParseInLocation("2006-01-02 15:04:05", input, time.Local); err == nil {
+		return t, nil
+	}
+
+	// Try full datetime without seconds
+	if t, err := time.ParseInLocation("2006-01-02 15:04", input, time.Local); err == nil {
 		return t, nil
 	}
 
@@ -60,6 +74,12 @@ func parseTimeInput(input string) (time.Time, error) {
 }
 
 func runPause(cmd *cobra.Command, args []string) error {
+	// If an entry ID is provided, add a pause to that specific entry
+	if len(args) == 1 {
+		cmd.SilenceUsage = true
+		return pauseByID(args[0])
+	}
+
 	entry, err := db.GetRunningEntry()
 	if err != nil {
 		return fmt.Errorf("failed to get running entry: %w", err)
@@ -124,6 +144,124 @@ func runPause(cmd *cobra.Command, args []string) error {
 		fmt.Printf(": %s", entry.Title)
 	}
 	fmt.Printf(" [%s elapsed]\n", formatDuration(entry.Duration()))
+
+	return nil
+}
+
+func pauseByID(entryID string) error {
+	entry, err := db.GetEntryByID(entryID)
+	if err != nil {
+		return fmt.Errorf("entry not found: %w", err)
+	}
+
+	// Build and display entry as pretty-printed JSON
+	tags := make([]string, len(entry.Tags))
+	for i, t := range entry.Tags {
+		tags[i] = t.Name
+	}
+
+	editable := editableEntry{
+		ID:        entry.ID,
+		Project:   entry.Project.Name,
+		Title:     entry.Title,
+		Tags:      tags,
+		StartTime: entry.StartTime.Format("2006-01-02 15:04:05"),
+		Status:    string(entry.Status),
+	}
+
+	if entry.EndTime != nil {
+		editable.EndTime = entry.EndTime.Format("2006-01-02 15:04:05")
+	}
+
+	for _, p := range entry.Pauses {
+		ep := editPause{
+			ID:        p.ID,
+			PauseTime: p.PauseTime.Format("2006-01-02 15:04:05"),
+			Reason:    p.Reason,
+		}
+		if p.ResumeTime != nil {
+			ep.ResumeTime = p.ResumeTime.Format("2006-01-02 15:04:05")
+		}
+		editable.Pauses = append(editable.Pauses, ep)
+	}
+
+	jsonBytes, err := json.MarshalIndent(editable, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to format entry: %w", err)
+	}
+	fmt.Println(string(jsonBytes))
+	fmt.Println()
+
+	// Prompt for pause start time
+	reader := bufio.NewReader(os.Stdin)
+
+	fmt.Print("Enter pause start time (HH:MM, HH:MM:SS, or YYYY-MM-DD HH:MM:SS): ")
+	fromInput, err := reader.ReadString('\n')
+	if err != nil {
+		return err
+	}
+	fromInput = strings.TrimSpace(fromInput)
+	if fromInput == "" {
+		return fmt.Errorf("pause start time is required")
+	}
+
+	fromTime, err := parseTimeInput(fromInput)
+	if err != nil {
+		return err
+	}
+
+	// Validate: pause start >= entry start
+	if fromTime.Before(entry.StartTime) {
+		return fmt.Errorf("pause start time cannot be before entry start time (%s)", entry.StartTime.Format("2006-01-02 15:04:05"))
+	}
+
+	// Validate: if entry has end time, pause start must be before it
+	if entry.EndTime != nil && !fromTime.Before(*entry.EndTime) {
+		return fmt.Errorf("pause start time must be before entry end time (%s)", entry.EndTime.Format("2006-01-02 15:04:05"))
+	}
+
+	// Prompt for optional pause end time
+	fmt.Print("Enter pause end time (optional, press Enter to skip): ")
+	toInput, err := reader.ReadString('\n')
+	if err != nil {
+		return err
+	}
+	toInput = strings.TrimSpace(toInput)
+
+	var toTime *time.Time
+	if toInput != "" {
+		t, err := parseTimeInput(toInput)
+		if err != nil {
+			return err
+		}
+
+		// Validate: pause end >= pause start
+		if t.Before(fromTime) {
+			return fmt.Errorf("pause end time cannot be before pause start time")
+		}
+
+		// Validate: if entry has end time, pause end must be <= entry end
+		if entry.EndTime != nil && t.After(*entry.EndTime) {
+			return fmt.Errorf("pause end time cannot be after entry end time (%s)", entry.EndTime.Format("2006-01-02 15:04:05"))
+		}
+
+		toTime = &t
+	}
+
+	// Create the pause
+	_, err = db.CreatePause(entryID, fromTime, toTime, "Manual")
+	if err != nil {
+		return fmt.Errorf("failed to create pause: %w", err)
+	}
+
+	if toTime != nil {
+		fmt.Printf("Added pause: %s - %s (%s)\n",
+			fromTime.Format("15:04:05"),
+			toTime.Format("15:04:05"),
+			formatDuration(toTime.Sub(fromTime)))
+	} else {
+		fmt.Printf("Added open pause starting at %s\n", fromTime.Format("15:04:05"))
+	}
 
 	return nil
 }
